@@ -1,5 +1,6 @@
 package ru.netology.data;
 
+import lombok.AllArgsConstructor;
 import lombok.Value;
 
 public class DataHelper {
@@ -8,8 +9,8 @@ public class DataHelper {
 
     @Value
     public static class AuthInfo {
-        private String login;
-        private String password;
+        String login;
+        String password;
     }
 
     public static AuthInfo getAuthInfo() {
@@ -18,7 +19,7 @@ public class DataHelper {
 
     @Value
     public static class VerificationCode {
-        private String code;
+        String code;
     }
 
     public static VerificationCode getVerificationCodeFor(AuthInfo authInfo) {
@@ -26,27 +27,26 @@ public class DataHelper {
     }
 
     @Value
+    @AllArgsConstructor
     public static class CardInfo {
-        private String cardNumber;
-        private long balance;
+        String cardNumber;
+        String cardBalance;
     }
 
-    public static CardInfo getFirstCardInfo(AuthInfo authInfo) {
-        return new CardInfo("5559 0000 0000 0001", 10_000);
+    public static CardInfo getFirstCardInfo() {
+        return new CardInfo("5559000000000001", "10000");
     }
 
-    public static CardInfo getSecondCardInfo(AuthInfo authInfo) {
-        return new CardInfo("5559 0000 0000 0002", 10_000);
+    public static CardInfo getSecondCardInfo() {
+        return new CardInfo("5559000000000002", "10000");
     }
 
-    @Value
-    public static class MoneyTransferInfo {
-        private String refillAmount;
-        private String senderCardNumber;
+    public static int getBalanceOfFirstCardAfterTransfer(int balance, int amount) {
+        return balance - amount;
+
     }
 
-    public static MoneyTransferInfo getMoneyTransferInfo(String senderCardNumber, long refillAmount) {
-        return new MoneyTransferInfo(Long.toString(refillAmount), senderCardNumber);
+    public static int getBalanceOfSecondCardAfterTransfer(int balance, int amount) {
+        return balance + amount;
     }
-
 }

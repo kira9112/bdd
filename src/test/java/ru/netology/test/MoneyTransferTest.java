@@ -1,74 +1,69 @@
 package ru.netology.test;
 
 import lombok.val;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.netology.data.DataHelper;
 import ru.netology.page.DashboardPage;
 import ru.netology.page.LoginPage;
-import ru.netology.page.VerificationPage;
+
+import static com.codeborne.selenide.Selenide.open;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static ru.netology.data.DataHelper.getBalanceOfFirstCardAfterTransfer;
+import static ru.netology.data.DataHelper.getBalanceOfSecondCardAfterTransfer;
 
 public class MoneyTransferTest {
-
-    private LoginPage loginPage = new LoginPage();
-    private DataHelper.AuthInfo authInfo = DataHelper.getAuthInfo();
-    private VerificationPage verificationPage = loginPage.validLogin(authInfo);
-    private DataHelper.VerificationCode verificationCode = DataHelper.getVerificationCodeFor(authInfo);
-
-    private DashboardPage dashboardPage = verificationPage.validVerify(authInfo, verificationCode);
-    private long totalAmount = dashboardPage.getFirstCardSum() + dashboardPage.getSecondCardSum();
-
-    @Test
-    void transferMoneyOneFromTwo() {
-        val moneyTransferPage = dashboardPage.refillOneFromTwo();
-        val moneyTransferInfo = DataHelper.getMoneyTransferInfo(dashboardPage.getSecondCardNumber(),
-                dashboardPage.getSecondCardSum() / 10);
-        moneyTransferPage.refillAction(moneyTransferInfo);
-        dashboardPage.updateAmounts();
-
-        Assertions.assertEquals(moneyTransferPage.getRecipientAmount(), dashboardPage.getFirstCardSum());
-        Assertions.assertEquals(moneyTransferPage.getSenderAmount(), dashboardPage.getSecondCardSum());
-        Assertions.assertEquals(totalAmount, dashboardPage.getFirstCardSum() + dashboardPage.getSecondCardSum());
-    }
-
-
-    @Test
-    void transferMoneyTwoFromOne() {
-        val moneyTransferPage = dashboardPage.refillTwoFromOne();
-        val moneyTransferInfo = DataHelper.getMoneyTransferInfo(dashboardPage.getFirstCardNumber(),
-                dashboardPage.getFirstCardSum() / 10);
-        moneyTransferPage.refillAction(moneyTransferInfo);
-        dashboardPage.updateAmounts();
-
-        Assertions.assertEquals(moneyTransferPage.getRecipientAmount(), dashboardPage.getSecondCardSum());
-        Assertions.assertEquals(moneyTransferPage.getSenderAmount(), dashboardPage.getFirstCardSum());
-        Assertions.assertEquals(totalAmount, dashboardPage.getFirstCardSum() + dashboardPage.getSecondCardSum());
-    }
-
-
-    @Test
-    void zeroTransferMoneyTwoFromOne() {
-        val moneyTransferPage = dashboardPage.refillTwoFromOne();
-        val moneyTransferInfo = DataHelper.getMoneyTransferInfo(dashboardPage.getFirstCardNumber(),
-                dashboardPage.getFirstCardSum());
-        moneyTransferPage.refillAction(moneyTransferInfo);
-        dashboardPage.updateAmounts();
-
-        Assertions.assertEquals(totalAmount, dashboardPage.getSecondCardSum());
-        Assertions.assertEquals(0, dashboardPage.getFirstCardSum());
+    @BeforeEach
+    void setUp() {
+        open("http://localhost:9999");
+        LoginPage loginPage = new LoginPage();
+        val authInfo = DataHelper.getAuthInfo();
+        val verificationPage = loginPage.validLogin(authInfo);
+        val verificationCode = DataHelper.getVerificationCodeFor(authInfo);
+        verificationPage.validVerify(verificationCode);
     }
 
     @Test
-    void cancelTransferMoney() {
-        val moneyTransferPage = dashboardPage.refillOneFromTwo();
-        val moneyTransferInfo = DataHelper.getMoneyTransferInfo(dashboardPage.getSecondCardNumber(),
-                dashboardPage.getSecondCardSum() / 10);
-        moneyTransferPage.cancelAction(moneyTransferInfo);
-        dashboardPage.updateAmounts();
+    void shouldTransferFromFirstToSecond() {
+        val dashboardPage = new DashboardPage();
+        val amount = 1000;
+        val balanceOfFirstCardBefore = dashboardPage.getCardBalanceFirstCard();
+        val balanceOfSecondCardBefore = dashboardPage.getCardBalanceSecondCard();
+        val transferPage = dashboardPage.pushSecondCard();
+        val cardInfo = DataHelper.getFirstCardInfo();
+        transferPage.transferCard(cardInfo, amount);
+        val balanceAfterTransactionFirstCard = getBalanceOfFirstCardAfterTransfer(balanceOfFirstCardBefore, amount);
+        val balanceAfterTransactionSecondCard = getBalanceOfSecondCardAfterTransfer(balanceOfSecondCardBefore, amount);
+        val balanceOfFirstCardAfter = dashboardPage.getCardBalanceFirstCard();
+        val balanceOfSecondCardAfter = dashboardPage.getCardBalanceSecondCard();
+        assertEquals(balanceAfterTransactionFirstCard, balanceOfFirstCardAfter);
+        assertEquals(balanceAfterTransactionSecondCard, balanceOfSecondCardAfter);
+    }
 
-        Assertions.assertEquals(moneyTransferPage.getStartRecipientAmount(), dashboardPage.getFirstCardSum());
-        Assertions.assertEquals(moneyTransferPage.getStartSenderAmount(), dashboardPage.getSecondCardSum());
-        Assertions.assertEquals(totalAmount, dashboardPage.getFirstCardSum() + dashboardPage.getSecondCardSum());
+    @Test
+    void shouldTransferFromSecondToFirst() {
+        val dashboardPage = new DashboardPage();
+        val amount = 1000;
+        val balanceOfFirstCardBefore = dashboardPage.getCardBalanceFirstCard();
+        val balanceOfSecondCardBefore = dashboardPage.getCardBalanceSecondCard();
+        val transferPage = dashboardPage.pushFirstCard();
+        val cardInfo = DataHelper.getSecondCardInfo();
+        transferPage.transferCard(cardInfo, amount);
+        val balanceAfterTransactionFirstCard = getBalanceOfSecondCardAfterTransfer(balanceOfFirstCardBefore, amount);
+        val balanceAfterTransactionSecondCard = getBalanceOfFirstCardAfterTransfer(balanceOfSecondCardBefore, amount);
+        val balanceOfFirstCardAfter = dashboardPage.getCardBalanceFirstCard();
+        val balanceOfSecondCardAfter = dashboardPage.getCardBalanceSecondCard();
+        assertEquals(balanceAfterTransactionFirstCard, balanceOfFirstCardAfter);
+        assertEquals(balanceAfterTransactionSecondCard, balanceOfSecondCardAfter);
+    }
+
+    @Test
+    void shouldNoTransferWhenTransferMoreBalanceOfCard() {
+        val dashboardPage = new DashboardPage();
+        val amount = 100000;
+        val transferPage = dashboardPage.pushFirstCard();
+        val cardInfo = DataHelper.getSecondCardInfo();
+        transferPage.transferCard(cardInfo, amount);
+        transferPage.getError();
     }
 }
